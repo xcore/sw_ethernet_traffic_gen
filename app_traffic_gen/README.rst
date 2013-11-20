@@ -11,7 +11,7 @@ line rate.
 The traffic generator is run using:
   xrun --xscope-realtime --xscope-port 127.0.0.1:12346 bin/test_mii_packetgen.xe
 
-And the host controller is found in host_controller
+And the host controller is found in host_application
 Which is run using from that folder using:
 
    ./traffic_gen_controller -s 127.0.0.1 -p 12346
