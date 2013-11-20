@@ -7,7 +7,7 @@
  *  ./traffic_gen_controller -s 127.0.0.1 -p 12346
  *
  */
-#include "shared.h"
+#include "xscope_host_shared.h"
 #include "traffic_ctlr_host_cmds.h"
 
 /*
