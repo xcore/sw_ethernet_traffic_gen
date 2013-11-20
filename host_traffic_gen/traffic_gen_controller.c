@@ -21,8 +21,6 @@
 
 #include <ctype.h>
 
-#define DEFAULT_FILE "cap.pcapng"
-
 const char *g_prompt = " > ";
 
 void hook_data_received(int xscope_probe, void *data, int data_len)

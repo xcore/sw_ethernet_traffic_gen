@@ -2,7 +2,7 @@
 <xpd>
     <components></components>
     <dependency repo = "sc_util">
-        <githash>d3278cb8dd84667f92a3babf3956b65b8745fd73</githash>
+        <githash>eb2fab197d49d35b878dd7bd0cc0196f6bbeff3f</githash>
         <uri>git://github.com/xcore/sc_util.git</uri>
     </dependency>
     <dependency repo = "sc_slicekit_support">
@@ -20,6 +20,7 @@
         <uri>https://github.com/xcore/sc_ethernet.git</uri>
     </dependency>
     <description>A traffic generator based on the standard ethernet layer. Provides host control application to control the packet type and data rate.</description>
+    <exclude_dir>host_traffic_gen</exclude_dir>
     <location>origin</location>
     <name>sw_ethernet_traffic_gen</name>
     <maintainer>pthedinger</maintainer>
