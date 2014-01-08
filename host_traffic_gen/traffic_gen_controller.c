@@ -23,6 +23,11 @@
 
 const char *g_prompt = " > ";
 
+void hook_registration_received(int sockfd, int xscope_probe, char *name)
+{
+  // Ignore
+}
+
 void hook_data_received(int sockfd, int xscope_probe, void *data, int data_len)
 {
   // Ignore
