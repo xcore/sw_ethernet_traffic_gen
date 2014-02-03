@@ -40,6 +40,13 @@ static void print_pkt_ctrl_usage()
   printf("               for a (u)nicast, (m)ulticast or a (b)roadcast packet type (type)\n");
 }
 
+static void print_vlan_tag_usage()
+{
+  printf("  %c <type> <e|d> <vlan> <prio> : configure VLAN tagging for\n", CMD_VLAN_TAG);
+  printf("               (u)nicast, (m)ulticast or a (b)roadcast packets (type). Either\n");
+  printf("               (e)nable VLAN tagging with specified (vlan) / (prio), or (d)isable it\n");
+}
+
 static void print_set_mac_usage()
 {
   printf("  %c <u|m> a:b:c:d:e:f       : set the destination MAC address for (u)nicast/(m)ulticast traffic\n", CMD_SET_MAC_ADDRESS);
@@ -49,6 +56,7 @@ static void print_console_usage()
 {
   printf("Supported commands:\n");
   print_pkt_ctrl_usage();
+  print_vlan_tag_usage();
   print_set_mac_usage();
   printf("  %c <ln_rt> : set the line rate for traffic generation\n", CMD_LINE_RATE);
   printf("  %c <s|r|d> : set the generation mode to one of (s)ilent, (r)andom mode or (d)irected\n", CMD_SET_GENERATOR_MODE);
@@ -93,23 +101,20 @@ static int convert_atoi_substr(const unsigned char **buffer)
 
 static int validate_pkt_ctrl_setting(const unsigned char *buffer)
 {
-  char pkt_type = 'z';
   const unsigned char *ptr = &buffer[1]; // Skip command
-  int weight = 0;
-  int pkt_size_min = 0;
-  int pkt_size_max = 0;
-
-  pkt_type = get_next_char(&ptr);
+  char pkt_type = get_next_char(&ptr);
+  int weight = convert_atoi_substr(&ptr);
+  int pkt_size_min = convert_atoi_substr(&ptr);
+  int pkt_size_max = convert_atoi_substr(&ptr);
 
   if ((pkt_type != 'u') && (pkt_type != 'm') && (pkt_type != 'b')) {
-    printf("Invalid packet type; specify either a (u)nicast, (m)ulticast or a (b)roadcast packet type \n");
+    printf("Invalid packet type; specify either a (u)nicast, (m)ulticast or a (b)roadcast packet type\n");
     print_pkt_ctrl_usage();
     return 0;
   }
 
-  weight = convert_atoi_substr(&ptr);
   if ((weight < 0) || (weight > 100)) {
-    printf("Invalid weight; specify a value between 1 and 99 \n");
+    printf("Invalid weight; specify a value between 1 and 99\n");
     print_pkt_ctrl_usage();
     return 0;
   }
@@ -117,23 +122,56 @@ static int validate_pkt_ctrl_setting(const unsigned char *buffer)
   if (weight == 0)
     return 1;
 
-  pkt_size_min = convert_atoi_substr(&ptr);
   if ((pkt_size_min < 60) || (pkt_size_min > 1518)) {
-    printf("Invalid min pkt_size; specify a value between 1 and 1500 \n");
+    printf("Invalid min pkt_size; specify a value between 1 and 1500\n");
     print_pkt_ctrl_usage();
     return 0;
   }
 
-  pkt_size_max = convert_atoi_substr(&ptr);
   if ((pkt_size_max < 60) || (pkt_size_max > 1518)) {
-    printf("Invalid max pkt_size; specify a value between 1 and 1500 \n");
+    printf("Invalid max pkt_size; specify a value between 1 and 1500\n");
     print_pkt_ctrl_usage();
     return 0;
   }
 
   if (pkt_size_min > pkt_size_max) {
-    printf("pkt_size_max value should be greater or equal to pkt_size_min \n");
+    printf("pkt_size_max value should be greater or equal to pkt_size_min\n");
     print_pkt_ctrl_usage();
+    return 0;
+  }
+
+  return 1;
+}
+
+static int validate_vlan_tag_settings(const unsigned char *buffer)
+{
+  const unsigned char *ptr = &buffer[1]; // Skip command
+  char pkt_type = get_next_char(&ptr);
+  char enable_disable = get_next_char(&ptr);
+  unsigned int vlan = convert_atoi_substr(&ptr);
+  unsigned int prio = convert_atoi_substr(&ptr);
+
+  if ((pkt_type != 'u') && (pkt_type != 'm') && (pkt_type != 'b')) {
+    printf("Invalid packet type; specify either a (u)nicast, (m)ulticast or a (b)roadcast packet type\n");
+    print_vlan_tag_usage();
+    return 0;
+  }
+
+  if ((enable_disable != 'e') && (enable_disable != 'd')) {
+    printf("Please specify 'e' to enable, 'd' to disable VLAN tagging\n");
+    print_vlan_tag_usage();
+    return 0;
+  }
+
+  if (vlan & ~0xfff) {
+    printf("Invalid VLAN ID (must be 12-bit)\n");
+    print_vlan_tag_usage();
+    return 0;
+  }
+
+  if (prio > 7) {
+    printf("Invalid priority, must be 0-7\n");
+    print_vlan_tag_usage();
     return 0;
   }
 
@@ -238,6 +276,11 @@ void *console_thread(void *arg)
 
       case CMD_PKT_CONTROL:
         if (validate_pkt_ctrl_setting(buffer))
+          xscope_ep_request_upload(sockfd, i, buffer);
+        break;
+
+      case CMD_VLAN_TAG:
+        if (validate_vlan_tag_settings(buffer))
           xscope_ep_request_upload(sockfd, i, buffer);
         break;
 

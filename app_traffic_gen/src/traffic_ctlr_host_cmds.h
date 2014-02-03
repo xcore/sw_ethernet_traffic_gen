@@ -11,6 +11,7 @@ enum {
   CMD_APPLY_CFG                = 'e',
   CMD_SWAP_CFG                 = 's',
   CMD_LINE_RATE                = 'r',
+  CMD_VLAN_TAG                 = 'v',
   CMD_QUIT                     = 'q'
 };
 

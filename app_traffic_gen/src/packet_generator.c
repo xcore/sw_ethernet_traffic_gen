@@ -25,49 +25,64 @@ unsigned char g_multicast_mac[2][MAC_ADDRESS_BYTES] = {
 unsigned char g_src_mac[MAC_ADDRESS_BYTES] = { 0, 0, 0, 0, 0, 0 };
 unsigned char g_broadcast_addr[MAC_ADDRESS_BYTES] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
-static void fill_pkt_hdr(packet_data_t *pkt_dptr)
+static void fill_pkt_hdr(char *seq_num_ptr)
 {
   static unsigned seq_num = 1;
-  pkt_dptr->seq_num[3] = seq_num & 0xFF;
-  pkt_dptr->seq_num[2] = (seq_num >> 8) & 0xFF;
-  pkt_dptr->seq_num[1] = (seq_num >> 16) & 0xFF;
-  pkt_dptr->seq_num[0] = (seq_num >> 24) & 0xFF;
+  seq_num_ptr[3] = seq_num & 0xFF;
+  seq_num_ptr[2] = (seq_num >> 8) & 0xFF;
+  seq_num_ptr[1] = (seq_num >> 16) & 0xFF;
+  seq_num_ptr[0] = (seq_num >> 24) & 0xFF;
   seq_num++;
 }
 
-void gen_unicast_frame(uintptr_t pkt_dptr)
+void gen_header(packet_data_t *ptr, pkt_ctrl_t *ctrl, unsigned short ether_type)
+{
+  if (ctrl->vlan_tag_enabled) {
+    packet_data_vlan_t *ptr_vlan = (packet_data_vlan_t *)ptr;
+    ptr_vlan->tpid[0] = 0x81;
+    ptr_vlan->tpid[1] = 0x00;
+
+    unsigned short vlan_tag = (ctrl->prio & 0x7) << 13 | (ctrl->vlan & 0xfff);
+    ptr_vlan->vlan_prio[0] = vlan_tag >> 8;
+    ptr_vlan->vlan_prio[1] = vlan_tag & 0xff;
+
+    ptr_vlan->frame_type[0] = ether_type >> 8;
+    ptr_vlan->frame_type[1] = ether_type & 0xff;
+    fill_pkt_hdr(ptr_vlan->seq_num);
+  } else {
+    ptr->frame_type[0] = ether_type >> 8;
+    ptr->frame_type[1] = ether_type & 0xff;
+    fill_pkt_hdr(ptr->seq_num);
+  }
+}
+
+void gen_unicast_frame(uintptr_t pkt_dptr, pkt_ctrl_t *ctrl)
 {
   packet_data_t *ptr = (packet_data_t *)pkt_dptr;
   memcpy(ptr->dest_mac, g_unicast_mac[g_directed_read_index], MAC_ADDRESS_BYTES);
   memcpy(ptr->src_mac, g_src_mac, MAC_ADDRESS_BYTES);
-  ptr->frame_type[0] = 0x89;
-  ptr->frame_type[1] = 0x32;
-  fill_pkt_hdr(ptr);
+  gen_header(ptr, ctrl, 0x8932);
 }
 
-void gen_multicast_frame(uintptr_t pkt_dptr)
+void gen_multicast_frame(uintptr_t pkt_dptr, pkt_ctrl_t *ctrl)
 {
   packet_data_t *ptr = (packet_data_t *)pkt_dptr;
   memcpy(ptr->dest_mac, g_multicast_mac[g_directed_read_index], MAC_ADDRESS_BYTES);
   memcpy(ptr->src_mac, g_src_mac, MAC_ADDRESS_BYTES);
-  ptr->frame_type[0] = 0x89;
-  ptr->frame_type[1] = 0x33;
-  fill_pkt_hdr(ptr);
+  gen_header(ptr, ctrl, 0x8933);
 }
 
-void gen_broadcast_frame(uintptr_t pkt_dptr)
+void gen_broadcast_frame(uintptr_t pkt_dptr, pkt_ctrl_t *ctrl)
 {
   packet_data_t *ptr = (packet_data_t *)pkt_dptr;
   memcpy(ptr->dest_mac, g_broadcast_addr, MAC_ADDRESS_BYTES);
   memcpy(ptr->src_mac, g_broadcast_addr, MAC_ADDRESS_BYTES);
-  ptr->frame_type[0] = 0x89;
-  ptr->frame_type[1] = 0x34;
-  fill_pkt_hdr(ptr);
+  gen_header(ptr, ctrl, 0x8934);
 }
 
-pkt_ctrl_t unicast =   { TYPE_UNICAST,   64, 1500, 20 };
-pkt_ctrl_t multicast = { TYPE_MULTICAST, 64, 1500, 50 };
-pkt_ctrl_t broadcast = { TYPE_BROADCAST, 64, 1500, 30 };
+pkt_ctrl_t unicast =   { TYPE_UNICAST,   64, 1500, 20, 0, 0, 0 };
+pkt_ctrl_t multicast = { TYPE_MULTICAST, 64, 1500, 50, 0, 0, 0 };
+pkt_ctrl_t broadcast = { TYPE_BROADCAST, 64, 1500, 30, 0, 0, 0 };
 
 pkt_ctrl_t *packet_type_none[] = { NULL };
 pkt_ctrl_t *packet_type_all[] = { &unicast, &multicast, &broadcast, NULL };
@@ -102,16 +117,16 @@ pkt_gen_ctrl_t broadcast_only = {
 
 /* Begin - Directed mode configuration */
 pkt_ctrl_t unicast_directed[2] = {
-  { TYPE_UNICAST, 64, 64, 35 },
-  { TYPE_UNICAST, 64, 1500, 35 }
+  { TYPE_UNICAST, 64, 64, 35, 0, 0, 0 },
+  { TYPE_UNICAST, 64, 1500, 35, 0, 0, 0 }
 };
 pkt_ctrl_t multicast_directed[2] = {
-  { TYPE_MULTICAST, 64, 1500, 0 },
-  { TYPE_MULTICAST, 64, 1500, 30 }
+  { TYPE_MULTICAST, 64, 1500, 0, 0, 0, 0 },
+  { TYPE_MULTICAST, 64, 1500, 30, 0, 0, 0 }
 };
 pkt_ctrl_t broadcast_directed[2] = {
-  { TYPE_BROADCAST, 64, 1500, 0 },
-  { TYPE_BROADCAST, 64, 1500, 40 }
+  { TYPE_BROADCAST, 64, 1500, 0, 0, 0, 0 },
+  { TYPE_BROADCAST, 64, 1500, 40, 0, 0, 0 }
 };
 
 pkt_ctrl_t *packet_type_directed0[] = { &unicast_directed[0], &multicast_directed[0], &broadcast_directed[0], NULL };

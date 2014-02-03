@@ -123,9 +123,9 @@ void listener_and_generator(chanend c_host_data, chanend c_mac_address, streamin
                 ((packet_data_t *)dptr)->delay = delay;
 
                 switch (packet->type) {
-                  case TYPE_UNICAST:   gen_unicast_frame(dptr);   break;
-                  case TYPE_MULTICAST: gen_multicast_frame(dptr); break;
-                  case TYPE_BROADCAST: gen_broadcast_frame(dptr); break;
+                  case TYPE_UNICAST:   gen_unicast_frame(dptr, packet);   break;
+                  case TYPE_MULTICAST: gen_multicast_frame(dptr, packet); break;
+                  case TYPE_BROADCAST: gen_broadcast_frame(dptr, packet); break;
                 }
 
                 // Send pointer and length to transmitter

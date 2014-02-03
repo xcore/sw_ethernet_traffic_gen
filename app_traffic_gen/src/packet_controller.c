@@ -50,6 +50,17 @@ static void copy_over_config(int read_index)
   set_multicast_mac_address(write_index, mac_address);
 }
 
+static pkt_type_t get_type_from_char(unsigned char c)
+{
+  switch (c) {
+    case 'u': return TYPE_UNICAST;
+    case 'm': return TYPE_MULTICAST;
+    case 'b': return TYPE_BROADCAST;
+    default : break;
+  }
+  return TYPE_UNICAST;
+}
+
 /**
  * \brief   A function that processes data being sent from the host and
  *          informs the analysis engine of any changes
@@ -75,21 +86,30 @@ void handle_host_data(unsigned char buffer[], int bytes_read, generator_mode_t *
     case CMD_PKT_CONTROL:
       {
         unsigned char c = get_next_char(&ptr);
-        pkt_ctrl_t *pkt_ctrl = NULL;
-        pkt_type_t pkt_type;
+        pkt_type_t pkt_type = get_type_from_char(c);
+        pkt_ctrl_t *pkt_ctrl = get_packet_control(pkt_type, g_directed_write_index);
 
-        switch (c) {
-          case 'u': pkt_type = TYPE_UNICAST; break;
-          case 'm': pkt_type = TYPE_MULTICAST; break;
-          case 'b': pkt_type = TYPE_BROADCAST; break;
-          default : break;
-        }
-
-        pkt_ctrl = get_packet_control(pkt_type, g_directed_write_index);
         pkt_ctrl->weight = convert_atoi_substr(&ptr);
         if (pkt_ctrl->weight) {
           pkt_ctrl->size_min = convert_atoi_substr(&ptr);
           pkt_ctrl->size_max = convert_atoi_substr(&ptr);
+        }
+      }
+      break;
+
+    case CMD_VLAN_TAG:
+      {
+        unsigned char c = get_next_char(&ptr);
+        pkt_type_t pkt_type = get_type_from_char(c);
+        pkt_ctrl_t *pkt_ctrl = get_packet_control(pkt_type, g_directed_write_index);
+
+        unsigned char mode = get_next_char(&ptr);
+        if (mode == 'e') {
+          pkt_ctrl->vlan_tag_enabled = 1;
+          pkt_ctrl->vlan = convert_atoi_substr(&ptr);
+          pkt_ctrl->prio = convert_atoi_substr(&ptr);
+        } else {
+          pkt_ctrl->vlan_tag_enabled = 0;
         }
       }
       break;
@@ -129,36 +149,44 @@ void handle_host_data(unsigned char buffer[], int bytes_read, generator_mode_t *
 
         debug_printf("Current configuration (%d rate factor)\n", g_rate_factor[directed_read_index]);
         pkt_ctrl = get_packet_control(TYPE_UNICAST, directed_read_index);
-        debug_printf("Unicast   weight %d, packet bytes %d-%d [%x:%x:%x:%x:%x:%x]\n",
+        debug_printf("Unicast   weight %d, packet bytes %d-%d [%x:%x:%x:%x:%x:%x], tag %s vlan %d prio %d\n",
             pkt_ctrl->weight, pkt_ctrl->size_min, pkt_ctrl->size_max,
-            mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5]);
+            mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5],
+            pkt_ctrl->vlan_tag_enabled ? "enabled" : "disabled", pkt_ctrl->vlan, pkt_ctrl->prio);
 
         get_multicast_mac_address(g_directed_write_index, mac_address);
         pkt_ctrl = get_packet_control(TYPE_MULTICAST, directed_read_index);
-        debug_printf("Multicast weight %d, packet bytes %d-%d [%x:%x:%x:%x:%x:%x]\n",
+        debug_printf("Multicast weight %d, packet bytes %d-%d [%x:%x:%x:%x:%x:%x], tag %s vlan %d prio %d\n",
             pkt_ctrl->weight, pkt_ctrl->size_min, pkt_ctrl->size_max,
-            mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5]);
+            mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5],
+            pkt_ctrl->vlan_tag_enabled ? "enabled" : "disabled", pkt_ctrl->vlan, pkt_ctrl->prio);
 
         pkt_ctrl = get_packet_control(TYPE_BROADCAST, directed_read_index);
-        debug_printf("Broadcast weight %d, packet bytes %d-%d\n", pkt_ctrl->weight, pkt_ctrl->size_min, pkt_ctrl->size_max);
+        debug_printf("Broadcast weight %d, packet bytes %d-%d, tag %s vlan %d prio %d\n",
+            pkt_ctrl->weight, pkt_ctrl->size_min, pkt_ctrl->size_max,
+            pkt_ctrl->vlan_tag_enabled ? "enabled" : "disabled", pkt_ctrl->vlan, pkt_ctrl->prio);
         
 
         debug_printf("Next configuration (%d rate factor):\n", g_rate_factor[g_directed_write_index]);
 
         get_unicast_mac_address(g_directed_write_index, mac_address);
         pkt_ctrl = get_packet_control(TYPE_UNICAST, g_directed_write_index);
-        debug_printf("Unicast   weight %d, packet bytes %d-%d [%x:%x:%x:%x:%x:%x]\n",
+        debug_printf("Unicast   weight %d, packet bytes %d-%d [%x:%x:%x:%x:%x:%x], tag %s vlan %d prio %d\n",
             pkt_ctrl->weight, pkt_ctrl->size_min, pkt_ctrl->size_max,
-            mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5]);
+            mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5],
+            pkt_ctrl->vlan_tag_enabled ? "enabled" : "disabled", pkt_ctrl->vlan, pkt_ctrl->prio);
 
         get_multicast_mac_address(g_directed_write_index, mac_address);
         pkt_ctrl = get_packet_control(TYPE_MULTICAST, g_directed_write_index);
-        debug_printf("Multicast weight %d, packet bytes %d-%d [%x:%x:%x:%x:%x:%x]\n",
+        debug_printf("Multicast weight %d, packet bytes %d-%d [%x:%x:%x:%x:%x:%x], tag %s vlan %d prio %d\n",
             pkt_ctrl->weight, pkt_ctrl->size_min, pkt_ctrl->size_max,
-            mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5]);
+            mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5],
+            pkt_ctrl->vlan_tag_enabled ? "enabled" : "disabled", pkt_ctrl->vlan, pkt_ctrl->prio);
         
         pkt_ctrl = get_packet_control(TYPE_BROADCAST, g_directed_write_index);
-        debug_printf("Broadcast weight %d, packet bytes %d-%d\n", pkt_ctrl->weight, pkt_ctrl->size_min, pkt_ctrl->size_max);
+        debug_printf("Broadcast weight %d, packet bytes %d-%d, tag %s vlan %d prio %d\n",
+            pkt_ctrl->weight, pkt_ctrl->size_min, pkt_ctrl->size_max,
+            pkt_ctrl->vlan_tag_enabled ? "enabled" : "disabled", pkt_ctrl->vlan, pkt_ctrl->prio);
 
         debug_printf("Press 's' to swap, press 'e' to update and copy\n");
       }
