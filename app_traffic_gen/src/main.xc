@@ -90,7 +90,7 @@ void listener_and_generator(chanend c_host_data, chanend c_mac_address, streamin
   random_generator_t r = random_create_generator_from_seed(0);
   uintptr_t ctrl_ptr = (uintptr_t)&directed[0];
   unsigned rate_factor = 0;
-  generator_mode_t generator_mode = GENERATOR_DIRECTED;//GENERATOR_SILENT;
+  generator_mode_t generator_mode = GENERATOR_SILENT;
 
   unsigned len = 0;
   pkt_ctrl_t * unsafe packet = NULL;
