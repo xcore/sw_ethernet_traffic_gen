@@ -6,7 +6,7 @@ TARGET = XR-AVB-LC-BRD
 # The APP_NAME variable determines the name of the final .xe file. It should
 # not include the .xe postfix. If left blank the name will default to
 # the project name
-APP_NAME = test_mii_packetgen
+APP_NAME = app_traffic_gen
 
 # The USED_MODULES variable lists other module used by the application.
 USED_MODULES  = module_ethernet module_ethernet_board_support module_otp_board_info
