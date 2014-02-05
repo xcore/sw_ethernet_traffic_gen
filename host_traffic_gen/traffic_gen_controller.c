@@ -351,6 +351,9 @@ int main(int argc, char *argv[])
   int sockfds[1] = {0};
   int c = 0;
 
+  // Ensure that stdout is not buffered for the auto-test framework
+  setvbuf(stdout, NULL, _IOLBF, 0);
+
   while ((c = getopt(argc, argv, "s:p:")) != -1) {
     switch (c) {
       case 's':
